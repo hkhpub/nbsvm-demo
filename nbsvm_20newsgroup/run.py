@@ -30,7 +30,7 @@ def compute_ratio(dics, trainset, labels, alpha=1):
     d = len(dic)
     ratioset = {}
     for i, label in enumerate(labels):
-        print "computing r for label(%d): %s" % (label, i)
+        print "computing r for label(%d): %s" % (i, label)
         # calculate ratio for each label
         p, q = np.ones(d) * alpha, np.ones(d) * alpha
         for t in alltokens:
