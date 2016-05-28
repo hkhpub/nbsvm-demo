@@ -15,11 +15,9 @@ def tokenize(sentence, grams):
 
 def build_dict(dic, f, grams):
     print "processing %s" % f
-    text = ''
-    for line in open(f).xreadlines():
-        text += line
-    tokens = tokenize(text, grams)
-    dic.update(tokens)
+    for sentence in open(f).xreadlines():
+        tokens = tokenize(sentence, grams)
+        dic.update(tokens)
     return dic
 
 
@@ -32,25 +30,23 @@ def process_files(data_path, trainset, dic, ratioset, labels, outfn, ngram):
             r = ratioset[label]
             trainfiles = trainset[label]
             for trainf in trainfiles:
-                text = ''
                 for l in open(data_path + '/' + label + '/' + trainf).xreadlines():
-                    text += l
-                tokens = tokenize(text, ngram)
-                indexes = []
-                for t in tokens:
-                    try:
-                        indexes += [dic[t]]
-                    except KeyError:
-                        pass
-                indexes = list(set(indexes))
-                indexes.sort()
-                if i == j:
-                    line = ['1']
-                else:
-                    line = ['-1']
-                for idx in indexes:
-                    line += ["%i:%f" % (idx + 1, r[idx])]
-                output += [" ".join(line)]
+                    tokens = tokenize(l, ngram)
+                    indexes = []
+                    for t in tokens:
+                        try:
+                            indexes += [dic[t]]
+                        except KeyError:
+                            pass
+                    indexes = list(set(indexes))
+                    indexes.sort()
+                    if i == j:
+                        line = ['1']
+                    else:
+                        line = ['-1']
+                    for idx in indexes:
+                        line += ["%i:%f" % (idx + 1, r[idx])]
+                    output += [" ".join(line)]
         # write output to train-nbsvm-label.txt
         output = "\n".join(output)
         fnm = outfn + '-' + label + '.txt'
@@ -112,12 +108,12 @@ def main(data_path, liblinear, out, ngram='12'):
 
     dic, ratioset = compute_ratio(dics, trainset, labels)
     print "processing files..."
-    # process_files(data_path, trainset, dic, ratioset, labels, 'train-nbsvm', ngram)
-    # process_files(data_path, testset, dic, ratioset, labels, 'test-nbsvm', ngram)
+    process_files(data_path, trainset, dic, ratioset, labels, 'train-nbsvm', ngram)
+    process_files(data_path, testset, dic, ratioset, labels, 'test-nbsvm', ngram)
 
     trainsvm = os.path.join(liblinear, "train")
     predictsvm = os.path.join(liblinear, "predict")
-    os.system(trainsvm + " -s 0 train-nbsvm-sci.crypt.txt model.logreg.crypt")
+    os.system(trainsvm + " -s 0 train-nbsvm-rec.sport.baseball.txt model.logreg.baseball")
     os.system(predictsvm + " -b 1 test-nbsvm-rec.sport.baseball.txt model.logreg.baseball " + out+'baseball')
 
 

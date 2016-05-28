@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #this function will convert text to lowercase and will disconnect punctuation and special symbols from words
 function normalize_text {
   awk '{print tolower($0);}' < $1 | sed -e 's/\./ \. /g' -e 's/<br \/>/ /g' -e 's/"/ " /g' \
