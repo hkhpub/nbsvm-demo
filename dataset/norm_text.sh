@@ -6,12 +6,14 @@ function normalize_text {
   -e 's/\;/ \; /g' -e 's/\:/ \: /g' > $1-norm
 }
 
-rm -r data2/
-mkdir data2
-for j in `ls devset`; do
-  mkdir data2/$j
-  for i in `ls devset/$j`; do cat devset/$j/$i >> temp; awk 'BEGIN{print;}' >> temp; done
+rm -r data/
+mkdir data
+for j in `ls 20newsgroup`; do
+  mkdir data/$j
+  for i in `ls 20newsgroup/$j`; do cat 20newsgroup/$j/$i >> temp; awk 'BEGIN{print;}' >> temp; done
   normalize_text temp
-  tr '\n\n' ' ' < temp-norm data2/$j/norm
+  # mv temp-norm data/$j/norm
+  sed -z 's/\n\n//'g temp-norm >> data/$j/norm
+  # tr '\n\n' ' ' < temp-norm >> data/$j/norm
   rm temp
 done

@@ -44,8 +44,46 @@ def process_files(data_path, dic, rset, labels, outfn, grams):
                     line += ["%i:%f" % (idx+1, rset[key][idx])]
                 output += [" ".join(line)]
         output = "\n".join(output)
-        f = open(outfn+"_"+label, "w")
+        f = open(outfn+"-"+label, "w")
         f.writelines(output)
+        f.close()
+
+
+def process_split_files(data_path, dic, rset, labels, grams):
+
+    for i, label in enumerate(labels):
+        files = [data_path+'/'+l+'/norm' for l in labels]
+        flags = ['-1'] * len(labels)
+        flags[i] = '1'
+        output = []
+        for flag, f, key in zip(flags, files, labels):
+            for l in open(f).xreadlines():
+                tokens = tokenize(l, grams)
+                indexes = []
+                for t in tokens:
+                    try:
+                        indexes += [dic[t]]
+                    except KeyError:
+                        pass
+                indexes = list(set(indexes))
+                indexes.sort()
+                line = [flag]
+                for idx in indexes:
+                    line += ["%i:%f" % (idx+1, rset[key][idx])]
+                output += [" ".join(line)]
+
+        # split train & test files
+        test_arr = random.sample(output, 100)
+        train_arr = [elm for elm in output if elm not in test_arr]
+
+        train_out = "\n".join(train_arr)
+        test_out = "\n".join(test_arr)
+        f = open('train-nbsvm-'+label, "w")
+        f.writelines(train_out)
+        f.close()
+
+        f = open('test-nbsvm-'+label, "w")
+        f.writelines(test_out)
         f.close()
 
 
@@ -87,24 +125,25 @@ def main(data_path, liblinear, out, ngram='12'):
 
     dic, rset = compute_ratio(dics, labels)
     print "processing files..."
-    process_files(data_path, dic, rset, labels, 'train-nbsvm', ngram)
+    # process_files(data_path, dic, rset, labels, 'train-nbsvm', ngram)
     # process_files(data_path, dic, rset, labels, 'test-nbsvm', ngram)
+    process_split_files(data_path, dic, rset, labels, ngram)
 
-    # trainsvm = os.path.join(liblinear, "train")
-    # predictsvm = os.path.join(liblinear, "predict")
-    # os.system(trainsvm + " -s 0 train-nbsvm-sci.crypt.txt model.logreg.crypt")
-    # os.system(predictsvm + " -b 1 test-nbsvm-rec.sport.baseball.txt model.logreg.baseball " + out+'baseball')
+    trainsvm = os.path.join(liblinear, "train")
+    predictsvm = os.path.join(liblinear, "predict")
+    os.system(trainsvm + " -s 0 train-nbsvm-sci.crypt model.logreg.crypt")
+    os.system(predictsvm + " -b 1 test-nbsvm-sci.crypt model.logreg.crypt " + out+'baseball')
 
 
 if __name__ == "__main__":
     # windows path
     data_path_windows = "D:/sources/nbsvm-demo/dataset/devset"
-    data_path_ubuntu_dev = "/home/hkh/sources/dataset/devset"
+    data_path_ubuntu_dev = "/home/hkh/sources/nbsvm-demo/dataset/devset"
 
-    data_path_ubuntu = "/home/hkh/sources/dataset/20newsgroup"
+    data_path_ubuntu = "/home/hkh/sources/nbsvm-demo/dataset/data"
 
     liblinear = '../nbsvm_run/liblinear-1.96'
     out = 'NBSVM-TEST'
 
-    main(data_path_windows, liblinear, out)
+    main(data_path_ubuntu, liblinear, out)
 
