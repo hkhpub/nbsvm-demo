@@ -13,29 +13,24 @@ def tokenize(sentence, grams):
     return tokens
 
 
-def build_dict(dic, f, grams):
+def build_dict(f, grams):
     print "processing %s" % f
-    text = ''
-    for line in open(f).xreadlines():
-        text += line
-    tokens = tokenize(text, grams)
-    dic.update(tokens)
+    dic = Counter()
+    for sentence in open(f).xreadlines():
+        dic.update(tokenize(sentence, grams))
     return dic
 
 
-def process_files(data_path, trainset, dic, ratioset, labels, outfn, ngram):
+def process_files(data_path, dic, rset, labels, outfn, grams):
 
     for i, label in enumerate(labels):
-
+        files = [data_path+'/'+l+'/norm' for l in labels]
+        flags = ['-1'] * len(labels)
+        flags[i] = '1'
         output = []
-        for j in range(len(labels)):
-            r = ratioset[label]
-            trainfiles = trainset[label]
-            for trainf in trainfiles:
-                text = ''
-                for l in open(data_path + '/' + label + '/' + trainf).xreadlines():
-                    text += l
-                tokens = tokenize(text, ngram)
+        for flag, f, key in zip(flags, files, labels):
+            for l in open(f).xreadlines():
+                tokens = tokenize(l, grams)
                 indexes = []
                 for t in tokens:
                     try:
@@ -44,81 +39,61 @@ def process_files(data_path, trainset, dic, ratioset, labels, outfn, ngram):
                         pass
                 indexes = list(set(indexes))
                 indexes.sort()
-                if i == j:
-                    line = ['1']
-                else:
-                    line = ['-1']
+                line = [flag]
                 for idx in indexes:
-                    line += ["%i:%f" % (idx + 1, r[idx])]
+                    line += ["%i:%f" % (idx+1, rset[key][idx])]
                 output += [" ".join(line)]
-        # write output to train-nbsvm-label.txt
         output = "\n".join(output)
-        fnm = outfn + '-' + label + '.txt'
-        print 'writing file %s' % fnm
-        f = open(fnm, "w")
+        f = open(outfn+"_"+label, "w")
         f.writelines(output)
         f.close()
 
 
-def compute_ratio(dics, trainset, labels, alpha=1):
-    s = set()
+def compute_ratio(dics, labels, alpha=1):
+    allkeys = []
     for dic in dics:
-        s.update(dic.keys())
-    alltokens = list(s)
+        allkeys += dic.keys()
+    alltokens = list(set(allkeys))
     dic = dict((t, i) for i, t in enumerate(alltokens))
     d = len(dic)
-    ratioset = {}
+    print "computing r..."
+
+    rset = {}
     for i, label in enumerate(labels):
-        print "computing r for label(%d): %s" % (i, label)
-        # calculate ratio for each label
         p, q = np.ones(d) * alpha, np.ones(d) * alpha
-        for t in alltokens:
-            p[dic[t]] += dics[i][t]
-            for j in range(len(labels)):
-                if j is not i:
+        for j in range(len(labels)):
+            for t in alltokens:
+                if i == j:
+                    p[dic[t]] += dics[j][t]
+                else:
                     q[dic[t]] += dics[j][t]
-        # we have filled p, q
         p /= abs(p).sum()
         q /= abs(q).sum()
         r = np.log(p/q)
-        ratioset[label] = r
+        rset[label] = r
 
-    # calculated ratio for all labels
-    print "done computing ratio.."
-    return dic, ratioset
+    return dic, rset
 
 
 def main(data_path, liblinear, out, ngram='12'):
     ngram = [int(i) for i in ngram]
     print "counting..."
 
-    # randomly separate 5 files in each category for test
     labels = [name for name in os.listdir(data_path)]
-    trainset = {}
-    testset = {}
     dics = []
-
     for name in labels:
-        subpath = os.path.join(data_path, name)
-        files = os.listdir(subpath)
-        testfiles = random.sample(files, 30)
-        trainfiles = [f for f in files if f not in testfiles]
-        trainset[name] = trainfiles
-        testset[name] = testfiles
-        dic = Counter()
-        for trainf in trainfiles:
-            dic = build_dict(dic, os.path.join(subpath, trainf), ngram)
+        dic = build_dict(data_path+'/'+name+'/norm', ngram)
         dics.append(dic)
 
-    dic, ratioset = compute_ratio(dics, trainset, labels)
+    dic, rset = compute_ratio(dics, labels)
     print "processing files..."
-    # process_files(data_path, trainset, dic, ratioset, labels, 'train-nbsvm', ngram)
-    # process_files(data_path, testset, dic, ratioset, labels, 'test-nbsvm', ngram)
+    process_files(data_path, dic, rset, labels, 'train-nbsvm', ngram)
+    # process_files(data_path, dic, rset, labels, 'test-nbsvm', ngram)
 
-    trainsvm = os.path.join(liblinear, "train")
-    predictsvm = os.path.join(liblinear, "predict")
-    os.system(trainsvm + " -s 0 train-nbsvm-sci.crypt.txt model.logreg.crypt")
-    os.system(predictsvm + " -b 1 test-nbsvm-rec.sport.baseball.txt model.logreg.baseball " + out+'baseball')
+    # trainsvm = os.path.join(liblinear, "train")
+    # predictsvm = os.path.join(liblinear, "predict")
+    # os.system(trainsvm + " -s 0 train-nbsvm-sci.crypt.txt model.logreg.crypt")
+    # os.system(predictsvm + " -b 1 test-nbsvm-rec.sport.baseball.txt model.logreg.baseball " + out+'baseball')
 
 
 if __name__ == "__main__":
@@ -130,5 +105,6 @@ if __name__ == "__main__":
 
     liblinear = '../nbsvm_run/liblinear-1.96'
     out = 'NBSVM-TEST'
-    main(data_path_ubuntu_dev, liblinear, out)
+
+    main(data_path_windows, liblinear, out)
 
