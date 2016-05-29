@@ -11,8 +11,7 @@ mkdir data2
 for j in `ls devset`; do
   mkdir data2/$j
   for i in `ls devset/$j`; do cat devset/$j/$i >> temp; awk 'BEGIN{print;}' >> temp; done
-  `tr '\n\n' ' ' < temp` >> temp
   normalize_text temp
-  mv temp-norm data2/$j/norm
+  tr '\n\n' ' ' < temp-norm data2/$j/norm
   rm temp
 done
